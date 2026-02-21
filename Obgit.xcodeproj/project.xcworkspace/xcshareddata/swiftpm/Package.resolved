@@ -1,0 +1,51 @@
+{
+  "originHash" : "172c6644ee85e40aa9b49dadd6010e0548b0bdd3eacf6583359e36000ff5cc35",
+  "pins" : [
+    {
+      "identity" : "clibgit2",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/light-tech/Clibgit2.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "0b01e2b814c8ad5dc0690f1fa9d0e8ffa7461d14"
+      }
+    },
+    {
+      "identity" : "networkimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/NetworkImage",
+      "state" : {
+        "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
+        "version" : "6.0.1"
+      }
+    },
+    {
+      "identity" : "swift-cmark",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-cmark",
+      "state" : {
+        "revision" : "5d9bdaa4228b381639fff09403e39a04926e2dbe",
+        "version" : "0.7.1"
+      }
+    },
+    {
+      "identity" : "swift-markdown-ui",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/swift-markdown-ui",
+      "state" : {
+        "branch" : "main",
+        "revision" : "8371aeb32f35795a9e559029fb08613355733626"
+      }
+    },
+    {
+      "identity" : "swiftgit2",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/light-tech/SwiftGit2.git",
+      "state" : {
+        "branch" : "spm",
+        "revision" : "03e7f41edf53658958c74db106749923ca9dcda0"
+      }
+    }
+  ],
+  "version" : 3
+}
