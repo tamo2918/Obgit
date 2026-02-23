@@ -568,6 +568,7 @@ private struct VaultMainPaneView: View {
     @Binding var showRawText: Bool
     @Binding var showDiscardConfirm: Bool
     let onToggleSidebar: () -> Void
+    @State private var isQuickMenuOpen = false
 
     var body: some View {
         let isMarkdownOpen = vm.selectedFileURL != nil && !vm.selectedFileIsImage
@@ -638,62 +639,71 @@ private struct VaultMainPaneView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(ObgitPalette.shellSurface)
 
-            if vm.isEditing {
-                VStack(alignment: .trailing, spacing: 10) {
-                    Button {
-                        vm.showCommitDialog = true
-                    } label: {
-                        Label("プッシュ", systemImage: "arrow.up.circle.fill")
+            if isQuickMenuOpen && !vm.isEditing {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        closeQuickMenu()
                     }
-                    .buttonStyle(ObgitGlassPillButtonStyle(fillColor: ObgitPalette.accentSoft))
-                    .disabled(!vm.isDirty)
-                    .opacity(vm.isDirty ? 1.0 : 0.55)
+            }
 
-                    Button {
+            if vm.isEditing {
+                HStack(spacing: 10) {
+                    editorActionButton(
+                        title: "プッシュ",
+                        systemImage: "arrow.up.circle.fill",
+                        tint: ObgitPalette.accent
+                    ) {
+                        vm.showCommitDialog = true
+                    }
+                    .disabled(!vm.isDirty)
+                    .opacity(vm.isDirty ? 1.0 : 0.58)
+
+                    editorActionButton(
+                        title: "完了",
+                        systemImage: "checkmark.circle",
+                        tint: ObgitPalette.mint
+                    ) {
                         if vm.isDirty {
                             showDiscardConfirm = true
                         } else {
                             vm.cancelEditing()
                         }
-                    } label: {
-                        Label("完了", systemImage: "checkmark.circle")
                     }
-                    .buttonStyle(ObgitGlassPillButtonStyle(fillColor: ObgitPalette.accentSoft))
                 }
                 .padding(.trailing, 18)
-                .padding(.bottom, 18)
+                .padding(.top, 14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .disabled(vm.isPulling || vm.isCommitting)
             } else {
-                Menu {
-                    Button("サイドバーを開く", systemImage: "line.3.horizontal") {
-                        onToggleSidebar()
+                VStack(alignment: .trailing, spacing: 10) {
+                    if isQuickMenuOpen {
+                        quickMenuPanel(isMarkdownOpen: isMarkdownOpen)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
 
-                    if isMarkdownOpen {
-                        Button(
-                            showRawText ? "Preview 表示" : "Raw 表示",
-                            systemImage: showRawText ? "doc.richtext" : "doc.plaintext"
-                        ) {
-                            showRawText.toggle()
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+                            isQuickMenuOpen.toggle()
                         }
-
-                        Button("編集", systemImage: "pencil") {
-                            vm.beginEditing()
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(isQuickMenuOpen ? ObgitPalette.accent : ObgitPalette.ink)
+                            .rotationEffect(.degrees(isQuickMenuOpen ? 45 : 0))
+                    }
+                    .obgitIconChip(size: 56, cornerRatio: 0.36)
+                    .overlay {
+                        if isQuickMenuOpen {
+                            RoundedRectangle(cornerRadius: 56 * 0.36, style: .continuous)
+                                .strokeBorder(ObgitPalette.accent.opacity(0.90), lineWidth: 1.6)
                         }
                     }
-
-                    Button("Pull で更新", systemImage: "arrow.triangle.2.circlepath") {
-                        vm.pullLatest()
-                    }
-                    .disabled(vm.isPulling)
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(ObgitPalette.ink)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.80), value: isQuickMenuOpen)
                 }
-                .obgitIconChip(size: 56, cornerRatio: 0.36)
                 .padding(.trailing, 18)
                 .padding(.bottom, 18)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .disabled(vm.isPulling || vm.isCommitting)
             }
         }
@@ -711,10 +721,123 @@ private struct VaultMainPaneView: View {
                 }
             }
         }
+        .onChange(of: vm.isEditing) { _, isEditing in
+            if isEditing {
+                closeQuickMenu(animated: false)
+            }
+        }
     }
 
     private func dismissKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    private func editorActionButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.96))
+                .padding(.horizontal, 15)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [tint.opacity(0.96), tint.opacity(0.74)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+                )
+                .shadow(color: tint.opacity(0.35), radius: 10, x: 0, y: 6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickMenuPanel(isMarkdownOpen: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            quickActionButton("サイドバーを開く", systemImage: "line.3.horizontal") {
+                closeQuickMenu(afterClose: {
+                    onToggleSidebar()
+                })
+            }
+
+            if isMarkdownOpen {
+                quickActionButton(
+                    showRawText ? "Preview 表示" : "Raw 表示",
+                    systemImage: showRawText ? "doc.richtext" : "doc.plaintext"
+                ) {
+                    closeQuickMenu(afterClose: {
+                        showRawText.toggle()
+                    })
+                }
+
+                quickActionButton("編集", systemImage: "pencil") {
+                    closeQuickMenu(afterClose: {
+                        vm.beginEditing()
+                    })
+                }
+            }
+
+            quickActionButton(
+                "Pull で更新",
+                systemImage: "arrow.triangle.2.circlepath",
+                disabled: vm.isPulling
+            ) {
+                closeQuickMenu(afterClose: {
+                    vm.pullLatest()
+                })
+            }
+        }
+        .padding(10)
+        .frame(width: 230)
+        .obgitGlassCard(cornerRadius: 20)
+    }
+
+    private func quickActionButton(
+        _ title: String,
+        systemImage: String,
+        disabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(.subheadline, design: .rounded).weight(.medium))
+                .foregroundStyle(disabled ? ObgitPalette.secondaryInk : ObgitPalette.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(ObgitPalette.shellSurfaceStrong.opacity(disabled ? 0.42 : 0.78))
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+
+    private func closeQuickMenu(animated: Bool = true, afterClose: (() -> Void)? = nil) {
+        if animated {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+                isQuickMenuOpen = false
+            }
+        } else {
+            isQuickMenuOpen = false
+        }
+
+        guard let afterClose else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (animated ? 0.08 : 0)) {
+            afterClose()
+        }
     }
 }
 
