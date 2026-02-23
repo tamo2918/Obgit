@@ -307,6 +307,7 @@ private struct VaultWorkspaceShellView: View {
     @State private var toastIsError = false
     @State private var fileTreeID = UUID()
     @State private var hasAppearedOnce = false
+    private let toastDisplayDuration: TimeInterval = 1.8
 
     init(
         repositories: [RepositoryModel],
@@ -543,7 +544,7 @@ private struct VaultWorkspaceShellView: View {
             toastText = text
             toastIsError = isError
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + toastDisplayDuration) {
             withAnimation(.easeOut(duration: 0.28)) {
                 toastText = nil
             }
