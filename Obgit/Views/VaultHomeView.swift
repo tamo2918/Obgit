@@ -298,7 +298,6 @@ private struct VaultWorkspaceShellView: View {
     @State private var dragTranslation: CGFloat = 0
     @State private var showRawText = false
     @State private var showSearch = false
-    @State private var isFullscreen = false
     @State private var showDiscardConfirm = false
     @State private var showSettings = false
     @State private var repoToEdit: RepositoryModel? = nil
@@ -334,7 +333,6 @@ private struct VaultWorkspaceShellView: View {
                 VaultMainPaneView(
                     vm: vm,
                     showRawText: $showRawText,
-                    isFullscreen: $isFullscreen,
                     showDiscardConfirm: $showDiscardConfirm,
                     onToggleSidebar: toggleSidebar,
                     onAddRepository: onAddRepository
@@ -470,24 +468,6 @@ private struct VaultWorkspaceShellView: View {
                 vm.selectFile(at: url)
             }
         }
-        .fullScreenCover(isPresented: $isFullscreen) {
-            if vm.selectedFileIsImage, let url = vm.selectedFileURL {
-                FullscreenImageView(url: url)
-            } else {
-                FullscreenMarkdownView(
-                    text: showRawText
-                        ? vm.selectedMarkdownText
-                        : MarkdownProcessor.processForPreview(vm.selectedMarkdownText),
-                    isRaw: showRawText,
-                    onNavigate: showRawText ? nil : { name in
-                        isFullscreen = false
-                        if let url = vm.findFile(named: name) {
-                            vm.selectFile(at: url)
-                        }
-                    }
-                )
-            }
-        }
         .sheet(isPresented: $vm.showCommitDialog) {
             CommitDialogView(vm: vm)
         }
@@ -587,181 +567,67 @@ private struct VaultWorkspaceShellView: View {
 private struct VaultMainPaneView: View {
     @ObservedObject var vm: VaultWorkspaceViewModel
     @Binding var showRawText: Bool
-    @Binding var isFullscreen: Bool
     @Binding var showDiscardConfirm: Bool
     let onToggleSidebar: () -> Void
     let onAddRepository: () -> Void
 
     var body: some View {
-        let isFileOpen = vm.selectedFileURL != nil
-        let isMarkdownOpen = isFileOpen && !vm.selectedFileIsImage
+        let isMarkdownOpen = vm.selectedFileURL != nil && !vm.selectedFileIsImage
 
-        VStack(spacing: 0) {
-            // ヘッダーバー（常に表示）
-            HStack(spacing: 12) {
-                Button(action: onToggleSidebar) {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundStyle(ObgitPalette.ink)
-                        .frame(width: 44, height: 44)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(vm.repo.name)
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(ObgitPalette.ink)
-                        .lineLimit(1)
-
-                    if let fileURL = vm.selectedFileURL {
-                        Text(fileURL.lastPathComponent)
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(ObgitPalette.secondaryInk)
-                            .lineLimit(1)
-                    } else {
-                        Text("ファイルを選択")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(ObgitPalette.secondaryInk)
-                    }
-                }
-
-                Spacer()
-
-                if vm.isEditing {
-                    // 編集中: Commit ボタン（変更あり）+ 完了ボタン
-                    if vm.isDirty {
-                        Button {
-                            vm.showCommitDialog = true
-                        } label: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .foregroundStyle(ObgitPalette.accent)
-                        }
-                        .obgitIconChip(size: 44, cornerRatio: 0.42)
-                    }
-
-                    Button {
-                        if vm.isDirty {
-                            showDiscardConfirm = true
-                        } else {
-                            vm.cancelEditing()
-                        }
-                    } label: {
-                        Text("完了")
-                    }
-                    .buttonStyle(ObgitGlassPillButtonStyle(fillColor: ObgitPalette.accentSoft))
-
-                } else if isMarkdownOpen {
-                    // 閲覧中 (Markdown): Raw/Preview 切替 + 編集ボタン
-                    Button(showRawText ? "Preview" : "Raw") {
-                        showRawText.toggle()
-                    }
-                    .buttonStyle(ObgitGlassPillButtonStyle(fillColor: ObgitPalette.accentSoft))
-
-                    Button {
-                        vm.beginEditing()
-                    } label: {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 18, weight: .semibold, design: .rounded))
-                            .foregroundStyle(ObgitPalette.ink)
-                            .frame(width: 44, height: 44)
-                    }
-
-                } else if !isFileOpen {
-                    // ファイル未選択: Pull + 追加ボタン
-                    Button {
-                        vm.pullLatest()
-                    } label: {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 18, weight: .semibold, design: .rounded))
-                            .foregroundStyle(ObgitPalette.accent)
-                    }
-                    .obgitIconChip(size: 44, cornerRatio: 0.42)
-                    .disabled(vm.isPulling)
-
-                    Button(action: onAddRepository) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .semibold, design: .rounded))
-                            .foregroundStyle(ObgitPalette.mint)
-                    }
-                    .obgitIconChip(size: 44, cornerRatio: 0.42)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .obgitGlassCard(cornerRadius: 24)
-            .padding(.horizontal, 10)
-            .padding(.top, 10)
-
-            // コンテンツエリア
+        ZStack(alignment: .bottomTrailing) {
             Group {
                 if let fileURL = vm.selectedFileURL {
-                    ZStack(alignment: .topTrailing) {
-                        if vm.selectedFileIsImage {
-                            ImageViewerContent(url: fileURL)
-                                .id(fileURL)
-                        } else if vm.isEditing {
-                            TextEditor(text: $vm.editedText)
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundStyle(ObgitPalette.ink)
-                                .scrollContentBackground(.hidden)
-                                .background(Color.clear)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                        } else {
-                            ScrollView {
-                                if showRawText {
-                                    Text(vm.selectedMarkdownText)
-                                        .font(.system(.body, design: .monospaced))
-                                        .foregroundStyle(ObgitPalette.ink)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .textSelection(.enabled)
-                                        .padding(.horizontal, 22)
-                                        .padding(.vertical, 20)
-                                } else {
-                                    Markdown(MarkdownProcessor.processForPreview(vm.selectedMarkdownText))
-                                        .markdownTextStyle(\.text) {
-                                            FontSize(17)
-                                            ForegroundColor(ObgitPalette.ink)
-                                        }
-                                        .markdownTextStyle(\.code) {
-                                            FontFamilyVariant(.monospaced)
-                                            BackgroundColor(ObgitPalette.shellSurfaceStrong)
-                                        }
-                                        .foregroundStyle(ObgitPalette.ink)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .textSelection(.enabled)
-                                        .padding(.horizontal, 22)
-                                        .padding(.vertical, 20)
-                                        .environment(\.openURL, OpenURLAction { url in
-                                            guard let name = MarkdownProcessor.noteName(from: url) else {
-                                                return .systemAction
-                                            }
-                                            if let targetURL = vm.findFile(named: name) {
-                                                vm.selectFile(at: targetURL)
-                                            } else {
-                                                vm.errorMessage = "「\(name)」が見つかりませんでした"
-                                            }
-                                            return .handled
-                                        })
-                                }
-                            }
-                            .scrollIndicators(.hidden)
+                    if vm.selectedFileIsImage {
+                        ImageViewerContent(url: fileURL)
+                            .id(fileURL)
+                    } else if vm.isEditing {
+                        TextEditor(text: $vm.editedText)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(ObgitPalette.ink)
+                            .scrollContentBackground(.hidden)
                             .background(Color.clear)
-                        }
-
-                        // 全画面表示ボタン（編集中は非表示）
-                        if !vm.isEditing {
-                            Button {
-                                isFullscreen = true
-                            } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.secondaryInk)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                    } else {
+                        ScrollView {
+                            if showRawText {
+                                Text(vm.selectedMarkdownText)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundStyle(ObgitPalette.ink)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                                    .padding(.horizontal, 22)
+                                    .padding(.vertical, 20)
+                            } else {
+                                Markdown(MarkdownProcessor.processForPreview(vm.selectedMarkdownText))
+                                    .markdownTextStyle(\.text) {
+                                        FontSize(17)
+                                        ForegroundColor(ObgitPalette.ink)
+                                    }
+                                    .markdownTextStyle(\.code) {
+                                        FontFamilyVariant(.monospaced)
+                                        BackgroundColor(ObgitPalette.shellSurfaceStrong)
+                                    }
+                                    .foregroundStyle(ObgitPalette.ink)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                                    .padding(.horizontal, 22)
+                                    .padding(.vertical, 20)
+                                    .environment(\.openURL, OpenURLAction { url in
+                                        guard let name = MarkdownProcessor.noteName(from: url) else {
+                                            return .systemAction
+                                        }
+                                        if let targetURL = vm.findFile(named: name) {
+                                            vm.selectFile(at: targetURL)
+                                        } else {
+                                            vm.errorMessage = "「\(name)」が見つかりませんでした"
+                                        }
+                                        return .handled
+                                    })
                             }
-                            .obgitIconChip(size: 34, cornerRatio: 0.40)
-                            .padding(.top, 10)
-                            .padding(.trailing, 10)
                         }
+                        .scrollIndicators(.hidden)
+                        .background(Color.clear)
                     }
                 } else {
                     ContentUnavailableView(
@@ -772,18 +638,70 @@ private struct VaultMainPaneView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .fill(ObgitPalette.shellSurface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .strokeBorder(ObgitPalette.stroke, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-            .shadow(color: .black.opacity(0.09), radius: 18, x: 0, y: 10)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
+            .background(ObgitPalette.shellSurface)
+
+            if vm.isEditing {
+                VStack(alignment: .trailing, spacing: 10) {
+                    Button {
+                        vm.showCommitDialog = true
+                    } label: {
+                        Label("プッシュ", systemImage: "arrow.up.circle.fill")
+                    }
+                    .buttonStyle(ObgitGlassPillButtonStyle(fillColor: ObgitPalette.accentSoft))
+                    .disabled(!vm.isDirty)
+                    .opacity(vm.isDirty ? 1.0 : 0.55)
+
+                    Button {
+                        if vm.isDirty {
+                            showDiscardConfirm = true
+                        } else {
+                            vm.cancelEditing()
+                        }
+                    } label: {
+                        Label("完了", systemImage: "checkmark.circle")
+                    }
+                    .buttonStyle(ObgitGlassPillButtonStyle(fillColor: ObgitPalette.accentSoft))
+                }
+                .padding(.trailing, 18)
+                .padding(.bottom, 18)
+                .disabled(vm.isPulling || vm.isCommitting)
+            } else {
+                Menu {
+                    Button("サイドバーを開く", systemImage: "line.3.horizontal") {
+                        onToggleSidebar()
+                    }
+
+                    if isMarkdownOpen {
+                        Button(
+                            showRawText ? "Preview 表示" : "Raw 表示",
+                            systemImage: showRawText ? "doc.richtext" : "doc.plaintext"
+                        ) {
+                            showRawText.toggle()
+                        }
+
+                        Button("編集", systemImage: "pencil") {
+                            vm.beginEditing()
+                        }
+                    }
+
+                    Button("Pull で更新", systemImage: "arrow.triangle.2.circlepath") {
+                        vm.pullLatest()
+                    }
+                    .disabled(vm.isPulling)
+
+                    Button("新しいリポジトリを Clone", systemImage: "square.and.arrow.down.fill") {
+                        onAddRepository()
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(ObgitPalette.ink)
+                }
+                .obgitIconChip(size: 56, cornerRatio: 0.36)
+                .padding(.trailing, 18)
+                .padding(.bottom, 18)
+                .disabled(vm.isPulling || vm.isCommitting)
+            }
         }
     }
 }
@@ -1293,103 +1211,6 @@ private struct ImageViewerContent: View {
                 ContentUnavailableView("画像を読み込めません", systemImage: "photo.slash")
                     .frame(width: geo.size.width, height: geo.size.height)
             }
-        }
-    }
-}
-
-// MARK: - Fullscreen Image View
-
-private struct FullscreenImageView: View {
-    @Environment(\.dismiss) private var dismiss
-    let url: URL
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.ignoresSafeArea()
-
-            ImageViewerContent(url: url)
-
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-            .frame(width: 34, height: 34)
-            .background(
-                RoundedRectangle(cornerRadius: 34 * 0.40, style: .continuous)
-                    .fill(.white.opacity(0.18))
-            )
-            .padding(.top, 56)
-            .padding(.trailing, 16)
-        }
-    }
-}
-
-// MARK: - Fullscreen Markdown View
-
-private struct FullscreenMarkdownView: View {
-    @Environment(\.dismiss) private var dismiss
-    let text: String
-    let isRaw: Bool
-    /// WikiLink タップ時に呼ばれるコールバック。nil の場合（Raw モード等）はリンクを無効化。
-    var onNavigate: ((String) -> Void)? = nil
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            ObgitPalette.shellSurface.ignoresSafeArea()
-
-            ScrollView {
-                if isRaw {
-                    Text(text)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(ObgitPalette.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 72)
-                        .padding(.bottom, 40)
-                } else {
-                    Markdown(text)
-                        .markdownTextStyle(\.text) {
-                            FontSize(17)
-                            ForegroundColor(ObgitPalette.ink)
-                        }
-                        .markdownTextStyle(\.code) {
-                            FontFamilyVariant(.monospaced)
-                            BackgroundColor(ObgitPalette.shellSurfaceStrong)
-                        }
-                        .foregroundStyle(ObgitPalette.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 72)
-                        .padding(.bottom, 40)
-                        .environment(\.openURL, OpenURLAction { url in
-                            guard let name = MarkdownProcessor.noteName(from: url),
-                                  let onNavigate else {
-                                return .systemAction
-                            }
-                            onNavigate(name)
-                            return .handled
-                        })
-                }
-            }
-            .scrollIndicators(.hidden)
-
-            // 閉じるボタン（テキストに被らない最小限のUI）
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(ObgitPalette.secondaryInk)
-            }
-            .obgitIconChip(size: 34, cornerRatio: 0.42)
-            .opacity(0.80)
-            .padding(.top, 56)
-            .padding(.trailing, 16)
         }
     }
 }
