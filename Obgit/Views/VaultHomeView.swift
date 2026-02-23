@@ -725,264 +725,284 @@ private struct VaultSidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image("icon")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 28, height: 28)
-                Text("Obgit")
-                    .font(.system(.title3, design: .rounded).weight(.bold))
-                    .foregroundStyle(ObgitPalette.ink)
-                Spacer()
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(ObgitPalette.secondaryInk)
-                }
-                .obgitIconChip(size: 36, cornerRatio: 0.42)
-
-                Button(action: onCloseSidebar) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(ObgitPalette.secondaryInk)
-                }
-                .obgitIconChip(size: 36, cornerRatio: 0.42)
-            }
-            .padding(.horizontal, 18)
-            .padding(.top, 18)
-            .padding(.bottom, 12)
-
+            sidebarHeader
             Divider()
                 .overlay(ObgitPalette.line)
-
-            List {
-                Section {
-                    ForEach(repositories) { repo in
-                        Button {
-                            onSelectRepository(repo)
-                            onCloseSidebar()
-                        } label: {
-                            sidebarRow(isActive: repo.id == selectedRepository.id) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: repo.id == selectedRepository.id ? "checkmark.circle.fill" : "circle.dashed")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(repo.id == selectedRepository.id ? ObgitPalette.accent : ObgitPalette.secondaryInk)
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(repo.name)
-                                            .font(.system(.subheadline, design: .rounded).weight(repo.id == selectedRepository.id ? .bold : .medium))
-                                            .foregroundStyle(ObgitPalette.ink)
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "arrow.triangle.branch")
-                                                .font(.system(size: 10, weight: .semibold))
-                                            Text(repo.branch)
-                                                .font(.system(.caption, design: .rounded))
-                                        }
-                                        .foregroundStyle(ObgitPalette.secondaryInk)
-                                    }
-                                }
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-                        .contextMenu {
-                            Button("編集", systemImage: "pencil") {
-                                onCloseSidebar()
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
-                                    onEditRepository(repo)
-                                }
-                            }
-                            Divider()
-                            Button("削除", systemImage: "trash", role: .destructive) {
-                                onDeleteRepository(repo)
-                            }
-                        }
-                    }
-
-                    Button {
-                        onAddRepository()
-                        onCloseSidebar()
-                    } label: {
-                        sidebarRow {
-                            HStack(spacing: 12) {
-                                Image(systemName: "square.and.arrow.down.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.mint)
-                                Text("新しいリポジトリを Clone")
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-                } header: {
-                    sectionHeader("リポジトリ")
-                }
-
-                Section {
-                    Button {
-                        onCloseSidebar()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            showSearch = true
-                        }
-                    } label: {
-                        sidebarRow {
-                            HStack(spacing: 12) {
-                                Image(systemName: "magnifyingglass.circle.fill")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                                Text("ファイルを検索")
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-
-                    Button {
-                        vm.pullLatest()
-                        onCloseSidebar()
-                    } label: {
-                        sidebarRow {
-                            HStack(spacing: 12) {
-                                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.accent)
-                                Text("Pull で更新")
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-
-                    Button {
-                        onCloseSidebar()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            vm.showCommitHistory = true
-                        }
-                    } label: {
-                        sidebarRow {
-                            HStack(spacing: 12) {
-                                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.secondaryInk)
-                                Text("コミット履歴")
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-
-                    Button {
-                        onCloseSidebar()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            vm.showBranchSwitch = true
-                        }
-                    } label: {
-                        sidebarRow {
-                            HStack(spacing: 12) {
-                                Image(systemName: "arrow.triangle.branch")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.secondaryInk)
-                                Text("ブランチ切り替え")
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-
-                    Button(action: onReloadFileTree) {
-                        sidebarRow {
-                            HStack(spacing: 12) {
-                                Image(systemName: "arrow.clockwise.circle.fill")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(ObgitPalette.secondaryInk)
-                                Text("ファイルツリーを再読み込み")
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                    .foregroundStyle(ObgitPalette.ink)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-                } header: {
-                    sectionHeader("操作")
-                }
-
-                Section {
-                    if vm.fileTree.isEmpty {
-                        sidebarRow {
-                            HStack(spacing: 10) {
-                                Image(systemName: "doc.questionmark")
-                                    .font(.system(size: 18))
-                                    .foregroundStyle(ObgitPalette.secondaryInk)
-                                Text("ファイルがありません")
-                                    .font(.system(.subheadline, design: .rounded))
-                                    .foregroundStyle(ObgitPalette.secondaryInk)
-                            }
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
-                    } else {
-                        OutlineGroup(vm.fileTree, children: \.outlineChildren) { node in
-                            SidebarTreeRow(
-                                node: node,
-                                isSelected: vm.selectedFileURL == node.url,
-                                onTap: node.isViewable ? {
-                                    vm.select(node)
-                                    onCloseSidebar()
-                                } : nil
-                            )
-                        }
-                        .id(fileTreeID)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 24))
-                    }
-                } header: {
-                    sectionHeader("ファイル")
-                }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
+            sidebarList
         }
         .frame(width: width)
-        .background(
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .fill(ObgitPalette.sidebarSurface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .strokeBorder(ObgitPalette.stroke, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-        .padding(.vertical, 10)
-        .shadow(color: .black.opacity(0.15), radius: 20, x: 10, y: 8)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(ObgitPalette.sidebarSurface.ignoresSafeArea(edges: .vertical))
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(ObgitPalette.line.opacity(0.9))
+                .frame(width: 1)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 14, x: 8, y: 0)
+    }
+
+    private var sidebarHeader: some View {
+        HStack(spacing: 10) {
+            Image("icon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 28, height: 28)
+            Text("Obgit")
+                .font(.system(.title3, design: .rounded).weight(.bold))
+                .foregroundStyle(ObgitPalette.ink)
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+    }
+
+    private var sidebarList: some View {
+        List {
+            repositorySection
+            actionSection
+            fileSection
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+    }
+
+    private var repositorySection: some View {
+        Section {
+            ForEach(repositories) { repo in
+                Button {
+                    onSelectRepository(repo)
+                    onCloseSidebar()
+                } label: {
+                    sidebarRow(isActive: repo.id == selectedRepository.id) {
+                        HStack(spacing: 12) {
+                            Image(systemName: repo.id == selectedRepository.id ? "checkmark.circle.fill" : "circle.dashed")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(repo.id == selectedRepository.id ? ObgitPalette.accent : ObgitPalette.secondaryInk)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(repo.name)
+                                    .font(.system(.subheadline, design: .rounded).weight(repo.id == selectedRepository.id ? .bold : .medium))
+                                    .foregroundStyle(ObgitPalette.ink)
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.triangle.branch")
+                                        .font(.system(size: 10, weight: .semibold))
+                                    Text(repo.branch)
+                                        .font(.system(.caption, design: .rounded))
+                                }
+                                .foregroundStyle(ObgitPalette.secondaryInk)
+                            }
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+                .contextMenu {
+                    Button("編集", systemImage: "pencil") {
+                        onCloseSidebar()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
+                            onEditRepository(repo)
+                        }
+                    }
+                    Divider()
+                    Button("削除", systemImage: "trash", role: .destructive) {
+                        onDeleteRepository(repo)
+                    }
+                }
+            }
+
+            Button {
+                onAddRepository()
+                onCloseSidebar()
+            } label: {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "square.and.arrow.down.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.mint)
+                        Text("新しいリポジトリを Clone")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+        } header: {
+            sectionHeader("リポジトリ")
+        }
+    }
+
+    private var actionSection: some View {
+        Section {
+            Button {
+                onCloseSidebar()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showSettings = true
+                }
+            } label: {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.secondaryInk)
+                        Text("設定")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+
+            Button {
+                onCloseSidebar()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showSearch = true
+                }
+            } label: {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass.circle.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                        Text("ファイルを検索")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+
+            Button {
+                vm.pullLatest()
+                onCloseSidebar()
+            } label: {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.accent)
+                        Text("Pull で更新")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+
+            Button {
+                onCloseSidebar()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    vm.showCommitHistory = true
+                }
+            } label: {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.secondaryInk)
+                        Text("コミット履歴")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+
+            Button {
+                onCloseSidebar()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    vm.showBranchSwitch = true
+                }
+            } label: {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.secondaryInk)
+                        Text("ブランチ切り替え")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+
+            Button(action: onReloadFileTree) {
+                sidebarRow {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ObgitPalette.secondaryInk)
+                        Text("ファイルツリーを再読み込み")
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            .foregroundStyle(ObgitPalette.ink)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+        } header: {
+            sectionHeader("操作")
+        }
+    }
+
+    private var fileSection: some View {
+        Section {
+            if vm.fileTree.isEmpty {
+                sidebarRow {
+                    HStack(spacing: 10) {
+                        Image(systemName: "doc.questionmark")
+                            .font(.system(size: 18))
+                            .foregroundStyle(ObgitPalette.secondaryInk)
+                        Text("ファイルがありません")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(ObgitPalette.secondaryInk)
+                    }
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+            } else {
+                OutlineGroup(vm.fileTree, children: \.outlineChildren) { node in
+                    SidebarTreeRow(
+                        node: node,
+                        isSelected: vm.selectedFileURL == node.url,
+                        onTap: node.isViewable ? {
+                            vm.select(node)
+                            onCloseSidebar()
+                        } : nil
+                    )
+                }
+                .id(fileTreeID)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 24))
+            }
+        } header: {
+            sectionHeader("ファイル")
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {
