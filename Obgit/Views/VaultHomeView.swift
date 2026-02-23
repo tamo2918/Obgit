@@ -334,8 +334,7 @@ private struct VaultWorkspaceShellView: View {
                     vm: vm,
                     showRawText: $showRawText,
                     showDiscardConfirm: $showDiscardConfirm,
-                    onToggleSidebar: toggleSidebar,
-                    onAddRepository: onAddRepository
+                    onToggleSidebar: toggleSidebar
                 )
                 .offset(x: sidebarWidth * 0.30 * progress)
                 .animation(.interactiveSpring(response: 0.28, dampingFraction: 0.84), value: progress)
@@ -569,7 +568,6 @@ private struct VaultMainPaneView: View {
     @Binding var showRawText: Bool
     @Binding var showDiscardConfirm: Bool
     let onToggleSidebar: () -> Void
-    let onAddRepository: () -> Void
 
     var body: some View {
         let isMarkdownOpen = vm.selectedFileURL != nil && !vm.selectedFileIsImage
@@ -688,10 +686,6 @@ private struct VaultMainPaneView: View {
                         vm.pullLatest()
                     }
                     .disabled(vm.isPulling)
-
-                    Button("新しいリポジトリを Clone", systemImage: "square.and.arrow.down.fill") {
-                        onAddRepository()
-                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
@@ -703,6 +697,24 @@ private struct VaultMainPaneView: View {
                 .disabled(vm.isPulling || vm.isCommitting)
             }
         }
+        .toolbar {
+            if vm.isEditing {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button {
+                        dismissKeyboard()
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .accessibilityLabel("キーボードを閉じる")
+                }
+            }
+        }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
